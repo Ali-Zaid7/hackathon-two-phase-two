@@ -1,62 +1,68 @@
 <!--
 Sync Impact Report:
-- Version change: 0.0.0 (Template) -> 1.0.0 (Initial Ratification)
-- Added Principles: Schema-First Design, Data Integrity, User Isolation, SQLModel Compatibility, Cloud-Native Constraints
-- Defined Constraints: Neon Serverless, SQLModel ORM, Better Auth Integration
-- Defined Scope: Database Layer focus (Out of scope: API, Frontend)
-- Templates Status: ✅ All templates compatible with new principles
+- Version change: 1.0.0 -> 2.0.0 (MAJOR bump due to scope shift from database/backend to frontend SDD; new principles supersede prior database invariants)
+- Modified Principles: Replaced database-focused (Schema-First, Data Integrity, User Isolation, SQLModel, Cloud-Native) with frontend-focused (Spec-first, Contract fidelity, Stateless UI, Progressive enhancement)
+- Added Sections: Scope, Core principles, Authoritative sources, Standards, Constraints, Implementation boundaries, Success criteria, Non-goals
+- Removed Sections: Database-specific Constraints & Scope, Success Metrics
+- Templates Status: ✅ plan-template.md, spec-template.md, tasks-template.md compatible (no hard references to constitution content)
+- Follow-up TODOs: None
 -->
 
-# Phase II – Todo Full-Stack Web Application Constitution
+# Phase II – Todo Full-Stack Web Application Constitution (Frontend SDD)
+
+## Scope
+This constitution governs ONLY the frontend implementation.
+Backend, database schema, and authentication are already implemented and considered stable.
 
 ## Core Principles
+- Spec-first development (frontend must follow specs, not invent behavior)
+- Contract fidelity (frontend must not assume backend behavior beyond API specs)
+- Stateless UI logic (no business rules duplicated from backend)
+- Progressive enhancement (works before polish)
 
-### I. Schema-First Design
-Database defines system truth. The schema must align exactly with API and feature specs (specifically `specs/database/schema.md`). No backend or frontend work should proceed until the database schema is validated against the specification.
+## Authoritative Sources
+- @specs/ui/components.md
+- @specs/ui/pages.md
+- @specs/api/rest-endpoints.md
+- @specs/features/task-crud.md
+- frontend/CLAUDE.md
 
-### II. Data Integrity Over Convenience
-Strict enforcement of data validity at the database level. Foreign key constraints must enforce ownership. All timestamps (created_at, updated_at) must be generated or validated server-side/database-side, never trusted blindly from the client.
+## Standards
+- Next.js App Router (server components by default)
+- Client components only for interactivity
+- All API calls go through `/lib/api.ts`
+- JWT token must be attached to every request
+- No direct fetch calls inside components
+- No hardcoded user IDs (user derived from JWT session)
 
-### III. User Data Isolation (Hard Invariant)
-Every task or private resource MUST be owned by exactly one user. This is a non-negotiable security invariant. Tasks cannot exist without a valid `user_id`. Queries must be designed to efficiently filter by `user_id` (creation of appropriate indexes is mandatory).
+## Constraints
+- No backend changes allowed
+- No database schema changes allowed
+- No authentication logic implemented on frontend (Better Auth already configured)
+- No manual coding outside Claude Code
+- UI must be responsive (mobile + desktop)
 
-### IV. SQLModel Compatibility
-All database interactions must be defined using SQLModel. No raw SQL should be used for core application logic unless absolutely necessary for performance and documented via ADR. The schema definition must be compatible with SQLModel's class-based definition style.
+## Implementation Boundaries
+- Frontend consumes backend as a black box
+- Frontend trusts backend for authorization and filtering
+- Frontend handles loading, empty, and error states only
 
-### V. Cloud-Native Constraints
-Design for Neon Serverless PostgreSQL. Avoid long-running transactions or patterns that don't scale in a serverless environment. Indexes must be explicitly defined to support frequent query patterns (filtering by user, sorting by date) to minimize compute usage.
+## Success Criteria
+- User can sign in and see only their own tasks
+- All CRUD operations work end-to-end via API
+- JWT is attached to every request
+- UI reflects backend truth (no optimistic lies)
+- No spec violations detected during review
 
-## Constraints & Scope
-
-**Technology Stack:**
-- **Database**: Neon Serverless PostgreSQL
-- **ORM**: SQLModel (Python)
-- **Authentication Source**: Better Auth (users table treated as external authority)
-
-**Boundaries:**
-- No frontend or API logic in this cycle.
-- No schema changes outside of approved spec updates.
-- **Out of Scope**: API route implementation, JWT verification logic, Frontend state/UI, Data migration tooling.
-
-## Success Criteria & Sources
-
-**Sources of Truth:**
-- `specs/database/schema.md`
-- `specs/features/task-crud.md`
-- `specs/features/authentication.md`
-
-**Success Metrics:**
-- Database schema matches specs with no ambiguity.
-- Tasks cannot exist without a valid `user_id`.
-- Queries can efficiently filter by `user_id`.
-- Schema supports all CRUD operations (Create, Read, Update, Delete) without modification.
-- Backend can be built on top of this schema without requiring immediate schema changes.
+## Non-Goals
+- No chatbot features
+- No advanced filters beyond spec
+- No UI redesign beyond defined components
 
 ## Governance
+This Constitution supersedes all other technical practices for the Frontend SDD cycle.
+1. **Spec Compliance**: Any deviation from authoritative sources requires a spec update first.
+2. **Principle Invariants**: Core principles (Spec-first, Contract fidelity, etc.) are hard gates; no changes without version bump.
+3. **Amendment Process**: Changes require version bump and rationale in ADR or updated Constitution.
 
-This Constitution supersedes all other technical practices for the Database Layer cycle.
-1. **Spec Compliance**: Any deviation from `specs/database/schema.md` requires a spec update first.
-2. **Schema Invariants**: The "User Data Isolation" principle is a hard gate; no PR shall be merged that obscures or weakens user ownership linkage.
-3. **Amendment Process**: Changes to these principles require a version bump and explicit rationale documented in an ADR or updated Constitution.
-
-**Version**: 1.0.0 | **Ratified**: 2026-01-16 | **Last Amended**: 2026-01-16
+**Version**: 2.0.0 | **Ratified**: 2026-01-16 | **Last Amended**: 2026-01-17
