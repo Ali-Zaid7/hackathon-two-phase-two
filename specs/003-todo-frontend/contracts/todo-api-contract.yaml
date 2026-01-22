@@ -1,0 +1,301 @@
+openapi: 3.0.3
+info:
+  title: Todo Web App API
+  description: API contract for the Todo Web Application frontend to communicate with backend
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.todoapp.com
+    description: Production server
+
+paths:
+  /api/{user_id}/tasks:
+    get:
+      summary: Get all tasks for a user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user whose tasks to retrieve
+      responses:
+        '200':
+          description: Successfully retrieved tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '401':
+          description: Unauthorized - Invalid or missing JWT token
+        '403':
+          description: Forbidden - User trying to access another user's tasks
+      security:
+        - bearerAuth: []
+
+    post:
+      summary: Create a new task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user creating the task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Bad request - Invalid input data
+        '401':
+          description: Unauthorized - Invalid or missing JWT token
+        '403':
+          description: Forbidden - User trying to create task for another user
+      security:
+        - bearerAuth: []
+
+  /api/{user_id}/tasks/{id}:
+    get:
+      summary: Get a specific task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user whose task to retrieve
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the task to retrieve
+      responses:
+        '200':
+          description: Successfully retrieved task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          description: Unauthorized - Invalid or missing JWT token
+        '403':
+          description: Forbidden - User trying to access another user's task
+        '404':
+          description: Task not found
+      security:
+        - bearerAuth: []
+
+    put:
+      summary: Update a task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user whose task to update
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the task to update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Bad request - Invalid input data
+        '401':
+          description: Unauthorized - Invalid or missing JWT token
+        '403':
+          description: Forbidden - User trying to update another user's task
+        '404':
+          description: Task not found
+      security:
+        - bearerAuth: []
+
+    delete:
+      summary: Delete a task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user whose task to delete
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the task to delete
+      responses:
+        '204':
+          description: Task deleted successfully
+        '401':
+          description: Unauthorized - Invalid or missing JWT token
+        '403':
+          description: Forbidden - User trying to delete another user's task
+        '404':
+          description: Task not found
+      security:
+        - bearerAuth: []
+
+  /api/{user_id}/tasks/{id}/complete:
+    patch:
+      summary: Toggle task completion status
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user whose task to update
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the task to update
+      responses:
+        '200':
+          description: Task completion status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          description: Unauthorized - Invalid or missing JWT token
+        '403':
+          description: Forbidden - User trying to update another user's task
+        '404':
+          description: Task not found
+      security:
+        - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Task:
+      type: object
+      required:
+        - id
+        - user_id
+        - title
+        - is_completed
+        - priority
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the task
+        user_id:
+          type: string
+          description: ID of the user who owns this task
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Brief description of the task
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: Detailed description of the task
+        is_completed:
+          type: boolean
+          description: Status indicating if the task is completed
+          default: false
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Priority level of the task (1-5 scale)
+          default: 1
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the task was created
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the task was last updated
+
+    TaskCreate:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Brief description of the task
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: Detailed description of the task
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Priority level of the task (1-5 scale)
+          default: 1
+        is_completed:
+          type: boolean
+          description: Status indicating if the task is completed
+          default: false
+
+    TaskUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Brief description of the task
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: Detailed description of the task
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Priority level of the task (1-5 scale)
+        is_completed:
+          type: boolean
+          description: Status indicating if the task is completed

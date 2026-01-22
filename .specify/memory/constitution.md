@@ -1,68 +1,97 @@
 <!--
 Sync Impact Report:
-- Version change: 1.0.0 -> 2.0.0 (MAJOR bump due to scope shift from database/backend to frontend SDD; new principles supersede prior database invariants)
-- Modified Principles: Replaced database-focused (Schema-First, Data Integrity, User Isolation, SQLModel, Cloud-Native) with frontend-focused (Spec-first, Contract fidelity, Stateless UI, Progressive enhancement)
-- Added Sections: Scope, Core principles, Authoritative sources, Standards, Constraints, Implementation boundaries, Success criteria, Non-goals
-- Removed Sections: Database-specific Constraints & Scope, Success Metrics
-- Templates Status: ✅ plan-template.md, spec-template.md, tasks-template.md compatible (no hard references to constitution content)
-- Follow-up TODOs: None
+- Version change: 3.0.0 -> 3.1.0 (minor update: added frontend implementation allowance for Phase II E2E verification)
+- List of modified principles: Added "Frontend Implementation Allowance"
+- Added sections: None new; principle added to Core Principles
+- Removed sections: None
+- Templates requiring updates (✅ updated / ⚠ pending): plan-template.md ✅ (Constitution Check aligns), spec-template.md ✅, tasks-template.md ✅
+- Follow-up TODOs: Re-run /sp.analyze post-amendment
 -->
-
-# Phase II – Todo Full-Stack Web Application Constitution (Frontend SDD)
+# Phase II – Todo Full-Stack Web Application Constitution (Integration & Testing)
 
 ## Scope
-This constitution governs ONLY the frontend implementation.
-Backend, database schema, and authentication are already implemented and considered stable.
+This constitution governs ONLY the integration verification and testing of the complete system.
+This SDD cycle is strictly limited to integration verification and testing.
+Frontend UI implementation is permitted as minimal intervention required for full end-to-end (E2E) verification of backend, auth, and database integration.
+No new features, schemas, or UI components beyond what's required for E2E testing.
 
 ## Core Principles
-- Spec-first development (frontend must follow specs, not invent behavior)
-- Contract fidelity (frontend must not assume backend behavior beyond API specs)
-- Stateless UI logic (no business rules duplicated from backend)
-- Progressive enhancement (works before polish)
+- State-awareness: always assess current integration state before changes
+- Contract fidelity: frontend, backend, auth, and database must honor existing specs
+- Minimal intervention: change only what is required to complete integration
+- Frontend Implementation Allowance: Implement frontend UI components necessary for E2E verification (e.g., forms to trigger API calls, displays for response validation); justify each addition as essential for testing backend CRUD + auth isolation
+- Verifiability: every integration must be testable end-to-end
 
 ## Authoritative Sources
-- @specs/ui/components.md
-- @specs/ui/pages.md
 - @specs/api/rest-endpoints.md
+- @specs/auth/jwt-authentication.md
+- @specs/db/schema.md
 - @specs/features/task-crud.md
-- frontend/CLAUDE.md
+- @specs/integration/full-system.md
 
 ## Standards
-- Next.js App Router (server components by default)
-- Client components only for interactivity
-- All API calls go through `/lib/api.ts`
-- JWT token must be attached to every request
-- No direct fetch calls inside components
-- No hardcoded user IDs (user derived from JWT session)
+- All API endpoints require valid JWT token
+- Unauthorized requests must return 401
+- Task data must be isolated per authenticated user
+- Frontend actions must reflect backend state accurately
+- No hardcoded user IDs allowed
+- JWT tokens are attached and verified on every API request
+- Backend correctly identifies user from token
+- Database queries are filtered by authenticated user
+
+## Integration Order
+1. Database ↔ Backend
+2. Authentication ↔ Backend
+3. Frontend ↔ Backend
+4. Full system (Frontend + Backend + Auth + DB)
+
+## Rules of Operation
+- Begin by inspecting current implementation state
+- Identify missing, partial, or broken integrations
+- Apply integration changes incrementally, one layer at a time
+- After each integration step, validate functionality before proceeding
+
+## Testing Standards
+- All API endpoints require valid JWT token
+- Unauthorized requests must return 401
+- Task data must be isolated per authenticated user
+- Frontend actions must reflect backend state accurately
+- No hardcoded user IDs allowed
 
 ## Constraints
-- No backend changes allowed
-- No database schema changes allowed
-- No authentication logic implemented on frontend (Better Auth already configured)
-- No manual coding outside Claude Code
-- UI must be responsive (mobile + desktop)
+- No manual coding by the user
+- No schema changes unless required for integration correctness
+- No feature expansion beyond existing specs
+- All changes must align with referenced specs
+- No backend changes unless required for integration
+- No database schema changes unless required for integration correctness
 
 ## Implementation Boundaries
-- Frontend consumes backend as a black box
-- Frontend trusts backend for authorization and filtering
-- Frontend handles loading, empty, and error states only
+- Database ↔ Backend integration must establish proper ORM connections
+- Authentication ↔ Backend integration must verify JWT tokens correctly
+- Frontend ↔ Backend integration must pass JWT tokens in headers
+- Full system integration must ensure end-to-end functionality
 
 ## Success Criteria
-- User can sign in and see only their own tasks
-- All CRUD operations work end-to-end via API
-- JWT is attached to every request
-- UI reflects backend truth (no optimistic lies)
-- No spec violations detected during review
+- Frontend successfully authenticates users via Better Auth
+- JWT tokens are attached and verified on every API request
+- Backend correctly identifies user from token
+- Database queries are filtered by authenticated user
+- All CRUD operations function end-to-end
+- System passes manual integration test without errors
 
 ## Non-Goals
-- No chatbot features
-- No advanced filters beyond spec
-- No UI redesign beyond defined components
+- No new feature development
+- No UI redesign
+- No schema modifications unless required for integration
+- No addition of new API endpoints
 
 ## Governance
-This Constitution supersedes all other technical practices for the Frontend SDD cycle.
+This Constitution supersedes all other technical practices for the Integration & Testing SDD cycle.
 1. **Spec Compliance**: Any deviation from authoritative sources requires a spec update first.
-2. **Principle Invariants**: Core principles (Spec-first, Contract fidelity, etc.) are hard gates; no changes without version bump.
+2. **Principle Invariants**: Core principles (State-awareness, Contract fidelity, etc.) are hard gates; no changes without version bump.
 3. **Amendment Process**: Changes require version bump and rationale in ADR or updated Constitution.
+4. **Integration Order**: Follow the prescribed integration sequence to avoid dependency conflicts.
+5. **Verification Requirement**: Every integration step must be validated before proceeding to the next layer.
 
-**Version**: 2.0.0 | **Ratified**: 2026-01-16 | **Last Amended**: 2026-01-17
+**Version**: 3.1.0 | **Ratified**: 2026-01-16 | **Last Amended**: 2026-01-17

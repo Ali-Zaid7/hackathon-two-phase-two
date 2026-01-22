@@ -1,8 +1,8 @@
-# Specification Quality Checklist: Todo Web App Frontend
+# Specification Quality Checklist: Phase II Integration and End-to-End Testing for Todo Web Application
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-01-17
-**Feature**: [spec.md](spec.md)
+**Feature**: specs/001-integration-testing/spec.md
 
 ## Content Quality
 
@@ -31,4 +31,4 @@
 
 ## Notes
 
-- Ready for /sp.plan
+- All items passed validation

@@ -16,9 +16,11 @@ async def get_current_user_id(
 ) -> str:
     credentials_exception_msg = "Could not validate credentials"
     try:
+        logger.info(f"[AUTH DEBUG] Validating JWT token: {credentials.credentials[:50]}...")
         payload = jwt.decode(
             credentials.credentials, SECRET_KEY, algorithms=["HS256"]
         )
+        logger.info(f"[AUTH DEBUG] JWT payload: {payload}")
         user_id: str = payload.get("sub")
         if user_id is None:
             logger.warning("JWT missing sub claim")

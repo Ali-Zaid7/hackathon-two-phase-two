@@ -1,1 +1,34 @@
-from pydantic import BaseModel, ConfigDict\nfrom typing import Optional\nfrom uuid import UUID\nfrom datetime import datetime\nfrom ..models.task import TaskBase  # Reuse SQLModel fields/types\n\nclass TaskCreate(TaskBase):\n    pass  # title*, desc?, priority=1, is_completed=False; user_id set server-side\n\nclass TaskUpdate(BaseModel):\n    model_config = ConfigDict(from_attributes=True)\n    title: Optional[str] = None\n    description: Optional[str] = None\n    is_completed: Optional[bool] = None\n    priority: Optional[int] = None\n\nclass TaskResponse(TaskBase):\n    model_config = ConfigDict(from_attributes=True)\n    id: UUID\n    user_id: str\n    created_at: datetime\n    updated_at: datetime\n
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Optional
+from uuid import UUID
+from datetime import datetime
+
+
+class TaskCreate(BaseModel):
+    """Schema for creating a new task."""
+    title: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = None
+    priority: int = Field(default=1, ge=1, le=5)
+    is_completed: bool = False
+
+
+class TaskUpdate(BaseModel):
+    """Schema for updating an existing task."""
+    model_config = ConfigDict(from_attributes=True)
+    title: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    description: Optional[str] = None
+    is_completed: Optional[bool] = None
+    priority: Optional[int] = Field(default=None, ge=1, le=5)
+
+
+class TaskResponse(BaseModel):
+    """Schema for task response."""
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    user_id: str
+    title: str
+    description: Optional[str] = None
+    is_completed: bool
+    priority: int
+    created_at: datetime
+    updated_at: datetime

@@ -37,6 +37,11 @@ async def create_task(
     current_user_id: str = Depends(get_current_user_id),
     session: Session = Depends(get_session)
 ):
+    logger.info(f"[TASK DEBUG] POST /{user_id}/tasks request received")
+    logger.info(f"[TASK DEBUG] Request user_id: {user_id}")
+    logger.info(f"[TASK DEBUG] Authenticated user_id: {current_user_id}")
+    logger.info(f"[TASK DEBUG] Task data: {task_in.model_dump()}")
+    
     if user_id != current_user_id:
         logger.warning(f"Unauthorized create attempt to user {user_id} by {current_user_id}")
         raise HTTPException(
@@ -44,12 +49,23 @@ async def create_task(
             detail="Forbidden: access denied"
         )
     logger.info(f"Creating task for user: {current_user_id}")
-    db_task = Task.model_validate(task_in.model_dump() | {"user_id": user_id})
-    session.add(db_task)
-    session.commit()
-    session.refresh(db_task)
-    logger.info(f"Created task {db_task.id} for user {user_id}")
-    return db_task
+    
+    try:
+        db_task = Task.model_validate(task_in.model_dump() | {"user_id": user_id})
+        logger.info(f"[TASK DEBUG] Validated task object: {db_task}")
+        
+        session.add(db_task)
+        session.commit()
+        session.refresh(db_task)
+        logger.info(f"Created task {db_task.id} for user {user_id}")
+        return db_task
+    except Exception as e:
+        logger.error(f"[TASK DEBUG] Error creating task: {str(e)}", exc_info=True)
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to create task: {str(e)}"
+        )
 
 @router.get("/{user_id}/tasks/{task_id}", response_model=TaskResponse)
 async def get_task(
@@ -71,8 +87,8 @@ async def get_task(
 @router.put("/{user_id}/tasks/{task_id}", response_model=TaskResponse)
 async def update_task(
     user_id: str,
-    task_id: UUID = Path(..., title="Task ID"),
     task_in: TaskUpdate,
+    task_id: UUID = Path(..., title="Task ID"),
     current_user_id: str = Depends(get_current_user_id),
     session: Session = Depends(get_session)
 ):
