@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install better-auth @better-auth/react)"
+    ]
+  }
+}

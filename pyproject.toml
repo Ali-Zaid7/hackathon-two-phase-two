@@ -1,14 +1,1 @@
-[project]
-name = "phase-2"
-version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.13"
-dependencies = [
-    "alembic>=1.18.1",
-    "psycopg2-binary>=2.9.11",
-    "pydantic-settings>=2.12.0",
-    "python-dotenv>=1.2.1",
-    "specifyplus>=0.0.20.post1",
-    "sqlmodel>=0.0.31",
-]
+[project]\nname = "phase-2"\nversion = "0.1.0"\ndescription = "Add your description here"\nreadme = "README.md"\nrequires-python = ">=3.13"\ndependencies = [\n    "alembic>=1.18.1",\n    "psycopg2-binary>=2.9.11",\n    "pydantic-settings>=2.12.0",\n    "python-dotenv>=1.2.1",\n    "specifyplus>=0.0.20.post1",\n    "sqlmodel>=0.0.31",\n    "fastapi>=0.115.0",\n    "uvicorn[standard]>=0.32.0",\n    "python-jose[cryptography]>=3.4.0",\n    "python-multipart>=0.0.9",\n]\n

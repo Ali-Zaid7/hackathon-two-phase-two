@@ -1,0 +1,220 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/components/AuthProvider';
+import TaskCard from '@/components/TaskCard';
+import TaskForm from '@/components/TaskForm';
+import { TaskResponse, TaskCreate, TaskUpdate } from '@/types/task';
+import { getTasks, createTask, updateTask, deleteTask, toggleTaskCompletion } from '@/lib/api';
+
+const TaskListPage = () => {
+  const { user, loading } = useAuth();
+  const [tasks, setTasks] = useState<TaskResponse[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingTask, setEditingTask] = useState<TaskResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load tasks when component mounts or user changes
+  useEffect(() => {
+    if (user && !loading) {
+      fetchTasks();
+    }
+  }, [user, loading]);
+
+  const fetchTasks = async () => {
+    if (!user) return;
+
+    try {
+      setLoadingTasks(true);
+      const userTasks = await getTasks(user.id);
+      setTasks(userTasks);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching tasks:', err);
+      setError('Failed to load tasks. Please try again.');
+    } finally {
+      setLoadingTasks(false);
+    }
+  };
+
+  const handleCreateTask = async (taskData: TaskCreate) => {
+    if (!user) {
+      console.error('[TASK DEBUG] No user object available');
+      setError('User not authenticated. Please log in again.');
+      return;
+    }
+
+    console.log('[TASK DEBUG] User object:', user);
+    console.log('[TASK DEBUG] User.id:', user.id);
+    console.log('[TASK DEBUG] Creating task with data:', taskData);
+
+    try {
+      if (!user.id) {
+        console.error('[TASK DEBUG] ERROR: user.id is undefined!');
+        setError('User ID is not available. Please log in again and refresh.');
+        return;
+      }
+      const newTask = await createTask(user.id, taskData);
+      setTasks([...tasks, newTask]);
+      setShowCreateForm(false);
+      setError(null);
+      console.log('[TASK DEBUG] Task created successfully:', newTask);
+    } catch (err: any) {
+      console.error('Error creating task:', err);
+      console.error('[TASK DEBUG] Full error:', err);
+      setError(`Failed to create task: ${err.message}`);
+    }
+  };
+
+  const handleUpdateTask = async (taskId: string, taskData: TaskUpdate) => {
+    if (!user) return;
+
+    try {
+      const updatedTask = await updateTask(user.id, taskId, taskData);
+
+      setTasks(tasks.map(task =>
+        task.id === taskId ? updatedTask : task
+      ));
+
+      setEditingTask(null);
+      setError(null);
+    } catch (err) {
+      console.error('Error updating task:', err);
+      setError('Failed to update task. Please try again.');
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!user) return;
+
+    if (window.confirm('Are you sure you want to delete this task?')) {
+      try {
+        await deleteTask(user.id, taskId);
+        setTasks(tasks.filter(task => task.id !== taskId));
+        setError(null);
+      } catch (err) {
+        console.error('Error deleting task:', err);
+        setError('Failed to delete task. Please try again.');
+      }
+    }
+  };
+
+  const handleToggleComplete = async (taskId: string) => {
+    if (!user) return;
+
+    try {
+      const updatedTask = await toggleTaskCompletion(user.id, taskId);
+
+      setTasks(tasks.map(task =>
+        task.id === taskId ? updatedTask : task
+      ));
+
+      setError(null);
+    } catch (err) {
+      console.error('Error toggling task completion:', err);
+      setError('Failed to update task. Please try again.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Please log in to view your tasks.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Tasks</h1>
+          <p className="text-gray-600">Manage your tasks efficiently</p>
+        </div>
+
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+            <p className="text-red-800">{error}</p>
+          </div>
+        )}
+
+        <div className="mb-6 flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-gray-800">Your Tasks</h2>
+          <button
+            onClick={() => {
+              setShowCreateForm(true);
+              setEditingTask(null);
+            }}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Add New Task
+          </button>
+        </div>
+
+        {showCreateForm && (
+          <div className="mb-8">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Create New Task</h3>
+            <TaskForm
+              onSubmit={(formData: TaskCreate | TaskUpdate) => handleCreateTask(formData as TaskCreate)}
+              onCancel={() => setShowCreateForm(false)}
+              submitLabel="Create Task"
+            />
+          </div>
+        )}
+
+        {editingTask && (
+          <div className="mb-8">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Task</h3>
+            <TaskForm
+              task={editingTask}
+              onSubmit={(formData) => handleUpdateTask(editingTask.id, formData as TaskUpdate)}
+              onCancel={() => setEditingTask(null)}
+              submitLabel="Update Task"
+            />
+          </div>
+        )}
+
+        {loadingTasks ? (
+          <div className="text-center py-8">
+            <p>Loading tasks...</p>
+          </div>
+        ) : tasks.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg shadow">
+            <p className="text-gray-500">No tasks yet. Create your first task!</p>
+          </div>
+        ) : (
+          <div>
+            <div className="mb-4 flex justify-between items-center">
+              <p className="text-gray-600">{tasks.length} task{tasks.length !== 1 ? 's' : ''} found</p>
+            </div>
+            <div className="space-y-4">
+              {tasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onToggleComplete={() => handleToggleComplete(task.id)}
+                  onEdit={() => {
+                    setEditingTask(task);
+                    setShowCreateForm(false);
+                  }}
+                  onDelete={() => handleDeleteTask(task.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default TaskListPage;
