@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import TaskCard from '@/components/TaskCard';
 import TaskForm from '@/components/TaskForm';
@@ -9,11 +10,19 @@ import { getTasks, createTask, updateTask, deleteTask, toggleTaskCompletion } fr
 
 const TaskListPage = () => {
   const { user, loading } = useAuth();
+  const router = useRouter();
   const [tasks, setTasks] = useState<TaskResponse[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
 
   // Load tasks when component mounts or user changes
   useEffect(() => {
@@ -49,22 +58,17 @@ const TaskListPage = () => {
     console.log('[TASK DEBUG] User.id:', user.id);
     console.log('[TASK DEBUG] Creating task with data:', taskData);
 
-    try {
-      if (!user.id) {
-        console.error('[TASK DEBUG] ERROR: user.id is undefined!');
-        setError('User ID is not available. Please log in again and refresh.');
-        return;
-      }
-      const newTask = await createTask(user.id, taskData);
-      setTasks([...tasks, newTask]);
-      setShowCreateForm(false);
-      setError(null);
-      console.log('[TASK DEBUG] Task created successfully:', newTask);
-    } catch (err: any) {
-      console.error('Error creating task:', err);
-      console.error('[TASK DEBUG] Full error:', err);
-      setError(`Failed to create task: ${err.message}`);
+    if (!user.id) {
+      console.error('[TASK DEBUG] ERROR: user.id is undefined!');
+      setError('User ID is not available. Please log in again and refresh.');
+      throw new Error('User ID is not available');
     }
+
+    const newTask = await createTask(user.id, taskData);
+    setTasks([...tasks, newTask]);
+    setShowCreateForm(false);
+    setError(null);
+    console.log('[TASK DEBUG] Task created successfully:', newTask);
   };
 
   const handleUpdateTask = async (taskId: string, taskData: TaskUpdate) => {
@@ -128,7 +132,10 @@ const TaskListPage = () => {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Please log in to view your tasks.</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Redirecting to login...</p>
+        </div>
       </div>
     );
   }
