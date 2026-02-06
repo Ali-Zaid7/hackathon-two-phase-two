@@ -107,6 +107,24 @@ Application provides seamless experience across desktop and mobile devices with 
 - **SC-005**: Interface is usable on screen sizes ranging from 320px (mobile) to 2560px (desktop)
 - **SC-006**: All authenticated user actions result in proper backend API calls with JWT tokens
 
+### Success Criteria Measurement Methodology
+
+To ensure success criteria are measurable and verifiable:
+
+- **SC-001 Measurement**: Manual user testing - time 5 representative users completing each CRUD operation (create, read, update, delete, toggle) and calculate average completion time. Success = all averages under 30 seconds.
+
+- **SC-002 Measurement**: Backend API logging - track API response status codes over 100 consecutive requests during manual testing. Success = ≥95 requests return 2xx status codes, remaining ≤5 return 4xx/5xx with proper error UI.
+
+- **SC-003 Measurement**: Manual user testing - observe 10 new users attempting task creation without guidance. Success = ≥9 users complete creation successfully on first attempt without needing help or corrections.
+
+- **SC-004 Measurement**: Browser DevTools Performance tab - measure "DOMContentLoaded" to "all tasks rendered" time over 10 page loads with 50 tasks in database. Success = average load time ≤3 seconds.
+
+- **SC-005 Measurement**: Manual responsive testing - verify UI functionality and layout on Chrome DevTools device emulation at 320px, 768px, 1024px, 1920px, 2560px viewport widths. Success = all features work correctly at all sizes.
+
+- **SC-006 Measurement**: Browser DevTools Network tab - inspect 20 consecutive authenticated API requests and verify all include `Authorization: Bearer <token>` header. Backend logs confirm JWT verification occurs. Success = 100% of requests include valid JWT.
+
+**Note**: These measurements are for development validation, not production monitoring. Metrics will be collected during manual QA testing before feature completion.
+
 ## Clarifications
 
 ### Session 2026-01-17
@@ -124,3 +142,17 @@ Application provides seamless experience across desktop and mobile devices with 
 - **FR-013**: Task creation and update MUST use separate dedicated pages
 - **FR-014**: Completed tasks MUST be shown with strikethrough text and faded/grayed appearance
 - **FR-015**: When API calls fail, system MUST show error message and allow user to retry the failed API call
+
+### Edge Case Resolution Requirements
+
+The following requirements address the edge cases identified above:
+
+- **FR-016**: When user loses internet connectivity during task operations, system MUST queue the failed request locally and display a "Connection lost - changes will sync when online" message. Upon connectivity restoration, system MUST automatically retry the queued operation and notify user of success/failure.
+
+- **FR-017**: When JWT token expires during API request (401 response), system MUST immediately clear the expired token, redirect user to login page, and display message "Your session has expired. Please log in again." System MUST NOT attempt to retry the request without re-authentication.
+
+- **FR-018**: When user attempts to access another user's tasks (403 response), system MUST display error message "Access denied - you can only view your own tasks" and prevent any modification attempts. System MUST log the unauthorized access attempt for security monitoring.
+
+- **FR-019**: When multiple users attempt to update the same task simultaneously, system MUST implement last-write-wins strategy with no conflict resolution UI. The backend's authoritative state will be accepted. User MUST receive standard success feedback showing the final task state from backend response.
+
+**Rationale**: FR-016 provides graceful degradation for network issues. FR-017 ensures security by preventing operations with invalid credentials. FR-018 enforces per-user data isolation. FR-019 accepts eventual consistency model appropriate for single-user task lists (concurrent edits to same task are rare in todo apps).

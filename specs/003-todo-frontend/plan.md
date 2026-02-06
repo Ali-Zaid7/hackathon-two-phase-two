@@ -95,5 +95,6 @@ frontend/
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+| None detected | Full frontend implementation authorized under Constitution v3.1.0 "Frontend Implementation Allowance" principle | N/A - This implementation is explicitly permitted for E2E verification of backend CRUD + auth isolation |
+
+**Justification**: Constitution v3.1.0 (line 21) states: "Frontend Implementation Allowance: Implement frontend UI components necessary for E2E verification (e.g., forms to trigger API calls, displays for response validation)". This feature falls entirely within that scope - all UI components exist to validate backend API, JWT auth, and per-user data isolation. No violations exist.

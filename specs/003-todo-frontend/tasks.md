@@ -142,20 +142,22 @@
 - **Reference**: spec.md (User Story 2, FR-005), contracts/task-api-contract.md
 
 **Task 3.3: Implement Task Creation Flow**
-- **Objective**: Enable users to create new tasks
+- **Objective**: Enable users to create new tasks using a dedicated page
 - **Steps**:
-  1. Add modal/form for task creation
-  2. Connect TaskForm to API client for POST requests
-  3. Handle success and error cases
-  4. Redirect or update UI after successful creation
-- **Files**: `frontend/components/TaskForm.tsx`, `frontend/app/(tasks)/page.tsx`
+  1. Create dedicated page `app/(tasks)/new/page.tsx` for task creation
+  2. Include TaskForm component configured in "create" mode
+  3. Connect TaskForm to API client for POST requests
+  4. Handle success and error cases
+  5. Redirect to task list page after successful creation
+- **Files**: `frontend/app/(tasks)/new/page.tsx`, `frontend/components/TaskForm.tsx`, `frontend/app/(tasks)/page.tsx`
 - **Acceptance Criteria**:
-  - Users can create new tasks successfully
-  - New tasks appear in the task list
-  - Error handling provides user feedback
-  - Success creates appropriate user feedback
+  - Users navigate to `/tasks/new` to create tasks (dedicated page, not modal)
+  - New tasks appear in the task list after creation
+  - Error handling provides user feedback inline with form
+  - Success redirects user to task list with success message
+  - "Add Task" button on task list links to `/tasks/new`
 - **Dependencies**: Tasks 1.3, 2.2, 3.1
-- **Reference**: spec.md (FR-003), contracts/task-api-contract.md
+- **Reference**: spec.md (FR-003, FR-013: "Task creation and update MUST use separate dedicated pages"), contracts/task-api-contract.md
 
 ### Phase 4: Task Operations and Enhancements
 
@@ -258,6 +260,57 @@
   - Performance is optimized
 - **Dependencies**: All previous tasks
 - **Reference**: spec.md (FR-010, SC-005), plan.md
+
+**Task 5.4: Implement Concurrent Update Handling**
+- **Objective**: Handle edge case where multiple users update the same task simultaneously
+- **Steps**:
+  1. Implement last-write-wins strategy (accept backend's authoritative response)
+  2. Update local UI state with backend response after every successful update
+  3. Ensure UI always reflects the final state returned by API
+  4. Add logging for debugging concurrent update scenarios
+- **Files**: `frontend/lib/api.ts`, `frontend/components/TaskForm.tsx`, `frontend/app/(tasks)/[id]/page.tsx`
+- **Acceptance Criteria**:
+  - When two users update the same task, the last update persists (per backend logic)
+  - UI reflects the final state from backend response, not optimistic local state
+  - No data corruption occurs from race conditions
+  - User sees the task in its final state after update completes
+- **Dependencies**: Tasks 4.1, 5.1
+- **Reference**: spec.md (FR-019, edge case: concurrent updates)
+
+**Task 5.5: Implement Unauthorized Access Handling**
+- **Objective**: Handle edge case where user attempts to access another user's tasks (403 response)
+- **Steps**:
+  1. Add 403 error handling to API client (`lib/api.ts`)
+  2. Display user-friendly error message: "Access denied - you can only view your own tasks"
+  3. Prevent modification attempts when 403 is detected
+  4. Log unauthorized access attempts to console for debugging
+  5. Optionally redirect to task list page if viewing invalid task detail page
+- **Files**: `frontend/lib/api.ts`, `frontend/components/ErrorBoundary.tsx`, `frontend/app/(tasks)/[id]/page.tsx`
+- **Acceptance Criteria**:
+  - 403 responses display appropriate error message to user
+  - User cannot modify tasks they don't own
+  - Unauthorized attempts are logged for security monitoring
+  - User experience is graceful (no crashes or broken UI)
+- **Dependencies**: Task 5.1 (error handling)
+- **Reference**: spec.md (FR-018, edge case: unauthorized access)
+
+**Task 5.6: Implement Proactive JWT Token Refresh**
+- **Objective**: Prevent 401 errors by refreshing JWT tokens before expiration
+- **Steps**:
+  1. Parse JWT token expiration time from token payload
+  2. Set up timer to refresh token 5 minutes before expiration
+  3. Call Better Auth refresh endpoint to obtain new token
+  4. Update stored token silently without user interruption
+  5. Handle refresh failures by redirecting to login
+- **Files**: `frontend/lib/auth.ts`, `frontend/components/AuthProvider.tsx`
+- **Acceptance Criteria**:
+  - Tokens refresh automatically before expiration during active sessions
+  - Users don't experience unexpected 401 errors during normal usage
+  - Failed refresh attempts redirect user to login page
+  - Token refresh happens silently in background
+- **Dependencies**: Task 1.2 (Better Auth integration)
+- **Reference**: spec.md (FR-017), plan.md (JWT token handling)
+- **Priority**: HIGH - prevents poor user experience from sudden session expiration
 
 ## Implementation Order
 1. Complete Phase 1 (Project setup and authentication)
