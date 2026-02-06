@@ -13,15 +13,18 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { register, user, loading } = useAuth();
+  const { register, user, loading, authChecked } = useAuth();
   const router = useRouter();
 
-  // Redirect if already logged in
+  // Redirect if already logged in (only after auth check completes)
   useEffect(() => {
-    if (!loading && user) {
+    // Wait for authChecked to be true before redirecting
+    // This prevents redirect loops caused by race conditions
+    if (authChecked && user) {
+      console.log('[REGISTER] Auth checked, user exists - redirecting to tasks');
       router.push('/tasks');
     }
-  }, [user, loading, router]);
+  }, [user, authChecked, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,8 +59,8 @@ export default function RegisterPage() {
     }
   };
 
-  // Show loading while checking auth state
-  if (loading) {
+  // Show loading while checking auth state (use authChecked for stability)
+  if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { TaskResponse, TaskCreate, TaskUpdate } from '@/types/task';
+import { useApiStatus } from '@/hooks/useApiStatus';
 
 interface TaskFormProps {
   task?: TaskResponse;  // Optional for edit mode
@@ -26,8 +27,7 @@ const TaskForm: React.FC<TaskFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const { status, executeWithStatus } = useApiStatus();
 
   useEffect(() => {
     if (isEditing && task) {
@@ -88,22 +88,21 @@ const TaskForm: React.FC<TaskFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitError(null);
 
     if (validate()) {
-      setSubmitting(true);
-      try {
-        const submitData = isEditing
-          ? { ...formData } as TaskUpdate
-          : { ...formData };
+      // Call the onSubmit function which is now handled by the parent component
+      // with proper API status management
+      await executeWithStatus(
+        async () => {
+          const submitData = isEditing
+            ? { ...formData } as TaskUpdate
+            : { ...formData };
 
-        await onSubmit(submitData);
-      } catch (error: any) {
-        console.error('Form submission error:', error);
-        setSubmitError(error.message || 'Failed to save task. Please try again.');
-      } finally {
-        setSubmitting(false);
-      }
+          await onSubmit(submitData);
+        },
+        isEditing ? 'Task updated successfully!' : 'Task created successfully!',
+        isEditing ? 'Failed to update task. Please try again.' : 'Failed to create task. Please try again.'
+      );
     }
   };
 
@@ -123,7 +122,7 @@ const TaskForm: React.FC<TaskFormProps> = ({
             errors.title ? 'border-red-500 text-gray-900' : 'border-gray-300 text-gray-900'
           }`}
           placeholder="Enter task title"
-          disabled={submitting}
+          disabled={status.loading}
         />
         {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title}</p>}
       </div>
@@ -140,7 +139,7 @@ const TaskForm: React.FC<TaskFormProps> = ({
           rows={3}
           className="w-full px-3 py-2 border border-gray-300 text-gray-900 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           placeholder="Enter task description (optional)"
-          disabled={submitting}
+          disabled={status.loading}
         />
         {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
       </div>
@@ -158,7 +157,7 @@ const TaskForm: React.FC<TaskFormProps> = ({
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
               errors.priority ? 'border-red-500 text-gray-900' : 'border-gray-300 text-gray-900'
             }`}
-            disabled={submitting}
+            disabled={status.loading}
           >
             {[1, 2, 3, 4, 5].map(num => (
               <option key={num} value={num}>
@@ -179,7 +178,7 @@ const TaskForm: React.FC<TaskFormProps> = ({
                 checked={formData.is_completed}
                 onChange={handleChange}
                 className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-2 focus:ring-indigo-500"
-                disabled={submitting}
+                disabled={status.loading}
               />
               <label htmlFor="is_completed" className="ml-2 block text-sm text-gray-900">
                 Completed
@@ -189,9 +188,9 @@ const TaskForm: React.FC<TaskFormProps> = ({
         )}
       </div>
 
-      {submitError && (
+      {status.error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-red-700 text-sm">{submitError}</p>
+          <p className="text-red-700 text-sm">{status.error}</p>
         </div>
       )}
 
@@ -200,7 +199,7 @@ const TaskForm: React.FC<TaskFormProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            disabled={submitting}
+            disabled={status.loading}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
@@ -208,10 +207,10 @@ const TaskForm: React.FC<TaskFormProps> = ({
         )}
         <button
           type="submit"
-          disabled={submitting}
+          disabled={status.loading}
           className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[120px]"
         >
-          {submitting ? (
+          {status.loading ? (
             <>
               <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

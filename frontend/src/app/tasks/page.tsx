@@ -7,50 +7,56 @@ import TaskCard from '@/components/TaskCard';
 import TaskForm from '@/components/TaskForm';
 import { TaskResponse, TaskCreate, TaskUpdate } from '@/types/task';
 import { getTasks, createTask, updateTask, deleteTask, toggleTaskCompletion } from '@/lib/api';
+import { useApiStatus } from '@/hooks/useApiStatus';
 
 const TaskListPage = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, authChecked } = useAuth();
   const router = useRouter();
   const [tasks, setTasks] = useState<TaskResponse[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  // Redirect to login if not authenticated
+  // Use API status for operations
+  const { executeWithStatus } = useApiStatus();
+
+  // Redirect to login if not authenticated (only after auth check completes)
   useEffect(() => {
-    if (!loading && !user) {
+    // Wait for authChecked to be true before redirecting
+    // This prevents redirect loops caused by race conditions
+    if (authChecked && !user) {
+      console.log('[TASKS] Auth checked, no user - redirecting to login');
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, authChecked, router]);
 
   // Load tasks when component mounts or user changes
   useEffect(() => {
-    if (user && !loading) {
+    if (authChecked && user) {
       fetchTasks();
     }
-  }, [user, loading]);
+  }, [user, authChecked]);
 
   const fetchTasks = async () => {
     if (!user) return;
 
-    try {
-      setLoadingTasks(true);
-      const userTasks = await getTasks(user.id);
-      setTasks(userTasks);
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching tasks:', err);
-      setError('Failed to load tasks. Please try again.');
-    } finally {
+    await executeWithStatus(
+      async () => {
+        setLoadingTasks(true);
+        const userTasks = await getTasks(user.id);
+        setTasks(userTasks);
+        return userTasks;
+      },
+      undefined, // No success message for loading
+      'Failed to load tasks. Please try again.'
+    ).finally(() => {
       setLoadingTasks(false);
-    }
+    });
   };
 
   const handleCreateTask = async (taskData: TaskCreate) => {
     if (!user) {
       console.error('[TASK DEBUG] No user object available');
-      setError('User not authenticated. Please log in again.');
       return;
     }
 
@@ -60,68 +66,76 @@ const TaskListPage = () => {
 
     if (!user.id) {
       console.error('[TASK DEBUG] ERROR: user.id is undefined!');
-      setError('User ID is not available. Please log in again and refresh.');
-      throw new Error('User ID is not available');
+      return;
     }
 
-    const newTask = await createTask(user.id, taskData);
-    setTasks([...tasks, newTask]);
-    setShowCreateForm(false);
-    setError(null);
-    console.log('[TASK DEBUG] Task created successfully:', newTask);
+    await executeWithStatus(
+      async () => {
+        const newTask = await createTask(user.id, taskData);
+        setTasks([...tasks, newTask]);
+        setShowCreateForm(false);
+        console.log('[TASK DEBUG] Task created successfully:', newTask);
+        return newTask;
+      },
+      'Task created successfully!',
+      'Failed to create task. Please try again.'
+    );
   };
 
   const handleUpdateTask = async (taskId: string, taskData: TaskUpdate) => {
     if (!user) return;
 
-    try {
-      const updatedTask = await updateTask(user.id, taskId, taskData);
+    await executeWithStatus(
+      async () => {
+        const updatedTask = await updateTask(user.id, taskId, taskData);
 
-      setTasks(tasks.map(task =>
-        task.id === taskId ? updatedTask : task
-      ));
+        setTasks(tasks.map(task =>
+          task.id === taskId ? updatedTask : task
+        ));
 
-      setEditingTask(null);
-      setError(null);
-    } catch (err) {
-      console.error('Error updating task:', err);
-      setError('Failed to update task. Please try again.');
-    }
+        setEditingTask(null);
+        return updatedTask;
+      },
+      'Task updated successfully!',
+      'Failed to update task. Please try again.'
+    );
   };
 
   const handleDeleteTask = async (taskId: string) => {
     if (!user) return;
 
     if (window.confirm('Are you sure you want to delete this task?')) {
-      try {
-        await deleteTask(user.id, taskId);
-        setTasks(tasks.filter(task => task.id !== taskId));
-        setError(null);
-      } catch (err) {
-        console.error('Error deleting task:', err);
-        setError('Failed to delete task. Please try again.');
-      }
+      await executeWithStatus(
+        async () => {
+          await deleteTask(user.id, taskId);
+          setTasks(tasks.filter(task => task.id !== taskId));
+        },
+        'Task deleted successfully!',
+        'Failed to delete task. Please try again.'
+      );
     }
   };
 
   const handleToggleComplete = async (taskId: string) => {
     if (!user) return;
 
-    try {
-      const updatedTask = await toggleTaskCompletion(user.id, taskId);
+    await executeWithStatus(
+      async () => {
+        const updatedTask = await toggleTaskCompletion(user.id, taskId);
 
-      setTasks(tasks.map(task =>
-        task.id === taskId ? updatedTask : task
-      ));
+        setTasks(tasks.map(task =>
+          task.id === taskId ? updatedTask : task
+        ));
 
-      setError(null);
-    } catch (err) {
-      console.error('Error toggling task completion:', err);
-      setError('Failed to update task. Please try again.');
-    }
+        return updatedTask;
+      },
+      updatedTask => updatedTask.is_completed ? 'Task marked as complete!' : 'Task marked as incomplete!',
+      'Failed to update task. Please try again.'
+    );
   };
 
-  if (loading) {
+  // Show loading while checking auth state (use authChecked for stability)
+  if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-lg">Loading...</div>
@@ -148,11 +162,6 @@ const TaskListPage = () => {
           <p className="text-gray-600">Manage your tasks efficiently</p>
         </div>
 
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
-            <p className="text-red-800">{error}</p>
-          </div>
-        )}
 
         <div className="mb-6 flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-800">Your Tasks</h2>
