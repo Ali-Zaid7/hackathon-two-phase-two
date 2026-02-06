@@ -8,6 +8,7 @@ import TaskForm from '@/components/TaskForm';
 import { TaskResponse, TaskCreate, TaskUpdate } from '@/types/task';
 import { getTasks, createTask, updateTask, deleteTask, toggleTaskCompletion } from '@/lib/api';
 import { useApiStatus } from '@/hooks/useApiStatus';
+import { useToast } from '@/components/ToastProvider';
 
 const TaskListPage = () => {
   const { user, loading, authChecked } = useAuth();
@@ -19,6 +20,7 @@ const TaskListPage = () => {
 
   // Use API status for operations
   const { executeWithStatus } = useApiStatus();
+  const { showToast } = useToast();
 
   // Redirect to login if not authenticated (only after auth check completes)
   useEffect(() => {
@@ -119,19 +121,19 @@ const TaskListPage = () => {
   const handleToggleComplete = async (taskId: string) => {
     if (!user) return;
 
-    await executeWithStatus(
-      async () => {
-        const updatedTask = await toggleTaskCompletion(user.id, taskId);
+    try {
+      const updatedTask = await toggleTaskCompletion(user.id, taskId);
 
-        setTasks(tasks.map(task =>
-          task.id === taskId ? updatedTask : task
-        ));
+      setTasks(tasks.map(task =>
+        task.id === taskId ? updatedTask : task
+      ));
 
-        return updatedTask;
-      },
-      updatedTask => updatedTask.is_completed ? 'Task marked as complete!' : 'Task marked as incomplete!',
-      'Failed to update task. Please try again.'
-    );
+      const successMessage = updatedTask.is_completed ? 'Task marked as complete!' : 'Task marked as incomplete!';
+      showToast(successMessage, 'success');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to update task. Please try again.', 'error');
+      console.error('Toggle error:', error);
+    }
   };
 
   // Show loading while checking auth state (use authChecked for stability)
