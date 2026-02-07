@@ -1,11 +1,12 @@
 <!--
 Sync Impact Report:
-- Version change: 3.0.0 -> 3.1.0 (minor update: added frontend implementation allowance for Phase II E2E verification)
-- List of modified principles: Added "Frontend Implementation Allowance"
-- Added sections: None new; principle added to Core Principles
+- Version change: 3.1.0 -> 3.1.1 (patch update: clarified scope exclusion for offline-first capabilities)
+- List of modified principles: None modified; clarification added to Non-Goals
+- Added sections: Explicit exclusion note under Non-Goals for offline-first features
 - Removed sections: None
-- Templates requiring updates (✅ updated / ⚠ pending): plan-template.md ✅ (Constitution Check aligns), spec-template.md ✅, tasks-template.md ✅
-- Follow-up TODOs: Re-run /sp.analyze post-amendment
+- Templates requiring updates (✅ updated / ⚠ pending): plan-template.md ✅, spec-template.md ✅, tasks-template.md ✅ (no changes needed - clarification only)
+- Follow-up TODOs: Update specs/003-todo-frontend/spec.md to remove or mark FR-016 as "Future Enhancement (Out of Scope)"
+- Rationale: Analysis identified FR-016 (offline queue/sync) violates "minimal intervention" principle. This patch explicitly clarifies that offline-first capabilities are excluded from integration phase scope.
 -->
 # Phase II – Todo Full-Stack Web Application Constitution (Integration & Testing)
 
@@ -85,6 +86,7 @@ No new features, schemas, or UI components beyond what's required for E2E testin
 - No UI redesign
 - No schema modifications unless required for integration
 - No addition of new API endpoints
+- **Offline-first capabilities are explicitly excluded**: Features such as offline operation queueing, background sync, local request caching, and connectivity-aware retry mechanisms are out of scope for this integration phase. These constitute new feature development beyond minimal intervention required for E2E verification.
 
 ## Governance
 This Constitution supersedes all other technical practices for the Integration & Testing SDD cycle.
@@ -94,4 +96,4 @@ This Constitution supersedes all other technical practices for the Integration &
 4. **Integration Order**: Follow the prescribed integration sequence to avoid dependency conflicts.
 5. **Verification Requirement**: Every integration step must be validated before proceeding to the next layer.
 
-**Version**: 3.1.0 | **Ratified**: 2026-01-16 | **Last Amended**: 2026-01-17
+**Version**: 3.1.1 | **Ratified**: 2026-01-16 | **Last Amended**: 2026-02-06

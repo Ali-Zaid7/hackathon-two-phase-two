@@ -3,14 +3,31 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { authClient } from '@/lib/auth-client';
 
+// Better Auth user type
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  emailVerified: boolean;
+  image?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Auth response types
+interface AuthResponse {
+  success: boolean;
+  error?: string;
+}
+
 // Auth context type
 interface AuthContextType {
-  user: any | null;
+  user: User | null;
   token: string | null;
   loading: boolean;
   authChecked: boolean; // Stable flag: true once initial auth check completes
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: any }>;
-  register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: any }>;
+  login: (email: string, password: string) => Promise<AuthResponse>;
+  register: (email: string, password: string, name: string) => Promise<AuthResponse>;
   logout: () => Promise<void>;
   isLoggedIn: boolean;
   refreshSession: () => Promise<void>;
@@ -20,7 +37,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false); // Prevents redirect loop
@@ -30,31 +47,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkSession = useCallback(async () => {
     // Prevent concurrent session checks
     if (checkInProgress.current) {
-      console.log('[AUTH] Session check already in progress, skipping');
       return;
     }
 
     checkInProgress.current = true;
-    console.log('[AUTH] Starting session check...');
 
     try {
       const session = await authClient.getSession();
-      console.log('[AUTH] Session response:', session);
 
       if (session?.data?.user) {
         setUser(session.data.user);
         // Check for token in localStorage (set during login)
         const storedToken = localStorage.getItem('jwt_token');
         setToken(storedToken);
-        console.log('[AUTH] User found in session:', session.data.user.email);
       } else {
         setUser(null);
         setToken(null);
         localStorage.removeItem('jwt_token');
-        console.log('[AUTH] No user in session');
       }
     } catch (error) {
-      console.error('[AUTH] Error checking session:', error);
       setUser(null);
       setToken(null);
       localStorage.removeItem('jwt_token');
@@ -62,7 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       setAuthChecked(true); // Mark auth as checked regardless of result
       checkInProgress.current = false;
-      console.log('[AUTH] Session check complete, authChecked=true');
     }
   }, []);
 
@@ -70,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkSession();
   }, [checkSession]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<AuthResponse> => {
     try {
       setLoading(true);
       const response = await authClient.signIn.email({
@@ -78,46 +88,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
       });
 
-      console.log('[AUTH DEBUG] Login response:', response);
-      console.log('[AUTH DEBUG] User object:', response?.data?.user);
-      console.log('[AUTH DEBUG] User ID:', response?.data?.user?.id);
-
       if (response?.data?.user) {
         const userObj = response.data.user;
         setUser(userObj);
 
         // Request JWT token using Better Auth JWT client method
         try {
-          // @ts-ignore - JWT client plugin adds getToken method
+          // @ts-expect-error - JWT client plugin adds getToken method
           const jwtResponse = await authClient.getToken();
-          console.log('[AUTH DEBUG] JWT response:', jwtResponse);
 
           if (jwtResponse?.data?.token) {
             const jwtToken = jwtResponse.data.token;
             setToken(jwtToken);
             localStorage.setItem('jwt_token', jwtToken);
-            console.log('[AUTH DEBUG] JWT token stored in localStorage');
-          } else {
-            console.warn('[AUTH DEBUG] No JWT token in response');
           }
         } catch (jwtError) {
-          console.error('[AUTH DEBUG] Error fetching JWT token:', jwtError);
+          // JWT token fetch failed, but login succeeded
         }
 
-        console.log('[AUTH DEBUG] Login successful, user:', userObj);
         return { success: true };
       }
-      console.error('[AUTH DEBUG] No user in response');
       return { success: false, error: 'Invalid credentials' };
-    } catch (error: any) {
-      console.error('Login error:', error);
-      return { success: false, error: error.message || 'Login failed' };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Login failed'
+      };
     } finally {
       setLoading(false);
     }
   };
 
-  const register = async (email: string, password: string, name: string) => {
+  const register = async (email: string, password: string, name: string): Promise<AuthResponse> => {
     try {
       setLoading(true);
       const response = await authClient.signUp.email({
@@ -126,40 +128,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name,
       });
 
-      console.log('[AUTH DEBUG] Register response:', response);
-      console.log('[AUTH DEBUG] User object:', response?.data?.user);
-      console.log('[AUTH DEBUG] User ID:', response?.data?.user?.id);
-
       if (response?.data?.user) {
         const userObj = response.data.user;
         setUser(userObj);
 
         // Request JWT token using Better Auth JWT client method
         try {
-          // @ts-ignore - JWT client plugin adds getToken method
+          // @ts-expect-error - JWT client plugin adds getToken method
           const jwtResponse = await authClient.getToken();
-          console.log('[AUTH DEBUG] JWT response:', jwtResponse);
 
           if (jwtResponse?.data?.token) {
             const jwtToken = jwtResponse.data.token;
             setToken(jwtToken);
             localStorage.setItem('jwt_token', jwtToken);
-            console.log('[AUTH DEBUG] JWT token stored in localStorage');
-          } else {
-            console.warn('[AUTH DEBUG] No JWT token in response');
           }
         } catch (jwtError) {
-          console.error('[AUTH DEBUG] Error fetching JWT token:', jwtError);
+          // JWT token fetch failed, but registration succeeded
         }
 
-        console.log('[AUTH DEBUG] Registration successful, user:', userObj);
         return { success: true };
       }
-      console.error('[AUTH DEBUG] No user in response');
       return { success: false, error: 'Registration failed' };
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      return { success: false, error: error.message || 'Registration failed' };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Registration failed'
+      };
     } finally {
       setLoading(false);
     }
@@ -169,7 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await authClient.signOut();
     } catch (error) {
-      console.error('Logout error:', error);
+      // Logout error - continue with local cleanup
     } finally {
       setUser(null);
       setToken(null);
@@ -180,6 +174,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshSession = async () => {
     await checkSession();
   };
+
+  // Proactive JWT token refresh (Task 5.6)
+  useEffect(() => {
+    if (!token || !user) return;
+
+    try {
+      // Parse token expiration from JWT payload
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const expiresAt = payload.exp * 1000; // Convert to milliseconds
+      const now = Date.now();
+      const timeUntilExpiry = expiresAt - now;
+
+      // Refresh token 5 minutes (300000ms) before expiration
+      const refreshTime = timeUntilExpiry - 300000;
+
+      if (refreshTime > 0) {
+        const timerId = setTimeout(async () => {
+          try {
+            // @ts-expect-error - JWT client plugin adds getToken method
+            const jwtResponse = await authClient.getToken();
+            if (jwtResponse?.data?.token) {
+              const newToken = jwtResponse.data.token;
+              setToken(newToken);
+              localStorage.setItem('jwt_token', newToken);
+            }
+          } catch (error) {
+            // Token refresh failed, redirect to login
+            localStorage.removeItem('jwt_token');
+            window.location.href = '/login';
+          }
+        }, refreshTime);
+
+        return () => clearTimeout(timerId);
+      } else {
+        // Token already expired or expiring soon, redirect to login
+        localStorage.removeItem('jwt_token');
+        window.location.href = '/login';
+      }
+    } catch (error) {
+      // Error parsing token, likely invalid format
+    }
+  }, [token, user]);
 
   const value: AuthContextType = {
     user,

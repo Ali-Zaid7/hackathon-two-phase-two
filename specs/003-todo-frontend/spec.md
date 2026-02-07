@@ -70,10 +70,13 @@ Application provides seamless experience across desktop and mobile devices with 
 
 ### Edge Cases
 
-- What happens when user loses internet connectivity during task operations?
 - How does system handle expired JWT tokens during API requests?
 - What occurs when user tries to access another user's tasks?
 - How does the application behave when multiple users try to update the same task simultaneously?
+
+### Future Enhancements (Out of Scope)
+
+- **Offline-first capabilities**: Features such as offline operation queueing, background sync when connectivity restored, local request caching, and connectivity-aware retry mechanisms are excluded per Constitution v3.1.1 (Non-Goals: minimal intervention principle). These constitute new feature development beyond E2E verification scope.
 
 ## Requirements *(mandatory)*
 
@@ -100,7 +103,7 @@ Application provides seamless experience across desktop and mobile devices with 
 
 ### Measurable Outcomes
 
-- **SC-001**: Users can complete task CRUD operations in under 30 seconds each
+- **SC-001**: Users can complete task CRUD operations in under 30 seconds each (measured from user action initiation to visible UI update confirmation)
 - **SC-002**: 95% of API requests return successfully with proper error handling for the remaining 5%
 - **SC-003**: 90% of users successfully complete task creation on first attempt
 - **SC-004**: Application loads and displays user's tasks within 3 seconds on average
@@ -111,7 +114,7 @@ Application provides seamless experience across desktop and mobile devices with 
 
 To ensure success criteria are measurable and verifiable:
 
-- **SC-001 Measurement**: Manual user testing - time 5 representative users completing each CRUD operation (create, read, update, delete, toggle) and calculate average completion time. Success = all averages under 30 seconds.
+- **SC-001 Measurement**: Manual user testing - time 5 representative users completing each CRUD operation (create, read, update, delete, toggle) from button/action click to visible UI update showing the change. Include form filling time and navigation steps in measurement. Success = all averages under 30 seconds.
 
 - **SC-002 Measurement**: Backend API logging - track API response status codes over 100 consecutive requests during manual testing. Success = ≥95 requests return 2xx status codes, remaining ≤5 return 4xx/5xx with proper error UI.
 
@@ -131,15 +134,15 @@ To ensure success criteria are measurable and verifiable:
 
 - Q: What responsive design approach should be used? → A: Mobile-first responsive design (design for mobile first, then enhance for desktop)
 - Q: How should API error messages be displayed? → A: API error messages displayed inline with the relevant UI element
-- Q: Should task creation/update use modals or separate pages? → A: Task creation/update using separate dedicated pages
+- Q: Should task creation/update use modals or separate pages? → A: Task creation/update using inline forms (conditionally rendered within main page)
 - Q: How should completed tasks be visually represented? → A: Completed tasks shown with strikethrough text and faded/grayed appearance
 - Q: What should happen on failed API calls? → A: Show error message and allow user to retry the failed API call
 
 ### Updated Functional Requirements
 
 - **FR-011**: Application MUST use mobile-first responsive design approach (design for mobile first, then enhance for desktop)
-- **FR-012**: API error messages MUST be displayed inline with the relevant UI element
-- **FR-013**: Task creation and update MUST use separate dedicated pages
+- **FR-012**: API error messages MUST be displayed inline with the relevant UI element (positioned directly below the related form field or action button, persistent until user action resolves the error or dismisses the message)
+- **FR-013**: Task creation and update MUST use inline forms (TaskForm component rendered conditionally within the main tasks page via state management, not separate routes)
 - **FR-014**: Completed tasks MUST be shown with strikethrough text and faded/grayed appearance
 - **FR-015**: When API calls fail, system MUST show error message and allow user to retry the failed API call
 
@@ -147,12 +150,10 @@ To ensure success criteria are measurable and verifiable:
 
 The following requirements address the edge cases identified above:
 
-- **FR-016**: When user loses internet connectivity during task operations, system MUST queue the failed request locally and display a "Connection lost - changes will sync when online" message. Upon connectivity restoration, system MUST automatically retry the queued operation and notify user of success/failure.
-
 - **FR-017**: When JWT token expires during API request (401 response), system MUST immediately clear the expired token, redirect user to login page, and display message "Your session has expired. Please log in again." System MUST NOT attempt to retry the request without re-authentication.
 
 - **FR-018**: When user attempts to access another user's tasks (403 response), system MUST display error message "Access denied - you can only view your own tasks" and prevent any modification attempts. System MUST log the unauthorized access attempt for security monitoring.
 
 - **FR-019**: When multiple users attempt to update the same task simultaneously, system MUST implement last-write-wins strategy with no conflict resolution UI. The backend's authoritative state will be accepted. User MUST receive standard success feedback showing the final task state from backend response.
 
-**Rationale**: FR-016 provides graceful degradation for network issues. FR-017 ensures security by preventing operations with invalid credentials. FR-018 enforces per-user data isolation. FR-019 accepts eventual consistency model appropriate for single-user task lists (concurrent edits to same task are rare in todo apps).
+**Rationale**: FR-017 ensures security by preventing operations with invalid credentials. FR-018 enforces per-user data isolation. FR-019 accepts eventual consistency model appropriate for single-user task lists (concurrent edits to same task are rare in todo apps).

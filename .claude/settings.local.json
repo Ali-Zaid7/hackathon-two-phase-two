@@ -4,7 +4,11 @@
       "Bash(npm install better-auth @better-auth/react)",
       "Bash(dir:*)",
       "Bash(curl:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks)",
+      "Bash(git commit:*)",
+      "Bash(uvicorn app.main:app:*)",
+      "Bash(npx eslint:*)"
     ]
   }
 }
