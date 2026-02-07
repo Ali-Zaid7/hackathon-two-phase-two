@@ -19,7 +19,8 @@ export const useApiStatus = () => {
   const executeWithStatus = useCallback(async <T,>(
     apiCall: () => Promise<T>,
     successMessage?: string,
-    errorMessage?: string
+    errorMessage?: string,
+    onError?: () => void
   ): Promise<T | null> => {
     setStatus({ loading: true, error: null, success: false });
 
@@ -38,6 +39,11 @@ export const useApiStatus = () => {
       setStatus({ loading: false, error: errorMsg, success: false });
 
       showToast(errorMsg, 'error');
+
+      // Call error callback if provided (e.g., for session expiry handling)
+      if (onError) {
+        onError();
+      }
 
       return null;
     }

@@ -83,7 +83,11 @@ const TaskListPage = () => {
   };
 
   const handleUpdateTask = async (taskId: string, taskData: TaskUpdate) => {
-    if (!user) return;
+    if (!user) {
+      showToast('User not authenticated. Please log in.', 'error');
+      router.push('/login');
+      return;
+    }
 
     await executeWithStatus(
       async () => {
@@ -97,12 +101,19 @@ const TaskListPage = () => {
         return updatedTask;
       },
       'Task updated successfully!',
-      'Failed to update task. Please try again.'
+      'Failed to update task. Please try again.',
+      () => {
+        router.push('/login');
+      }
     );
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    if (!user) return;
+    if (!user) {
+      showToast('User not authenticated. Please log in.', 'error');
+      router.push('/login');
+      return;
+    }
 
     if (window.confirm('Are you sure you want to delete this task?')) {
       await executeWithStatus(
@@ -111,13 +122,20 @@ const TaskListPage = () => {
           setTasks(tasks.filter(task => task.id !== taskId));
         },
         'Task deleted successfully!',
-        'Failed to delete task. Please try again.'
+        'Failed to delete task. Please try again.',
+        () => {
+          router.push('/login');
+        }
       );
     }
   };
 
   const handleToggleComplete = async (taskId: string) => {
-    if (!user) return;
+    if (!user) {
+      showToast('User not authenticated. Please log in.', 'error');
+      router.push('/login');
+      return;
+    }
 
     try {
       const updatedTask = await toggleTaskCompletion(user.id, taskId);
@@ -131,6 +149,11 @@ const TaskListPage = () => {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update task. Please try again.';
       showToast(errorMessage, 'error');
+
+      // If session expired, redirect to login
+      if (error instanceof Error && error.message.includes('session has expired')) {
+        router.push('/login');
+      }
     }
   };
 
