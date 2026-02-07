@@ -11,18 +11,20 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { login, user, loading, authChecked } = useAuth();
+  const { login, user, token, loading, authChecked } = useAuth();
   const router = useRouter();
 
   // Redirect if already logged in (only after auth check completes)
+  // IMPORTANT: Check both user AND token to prevent redirect loop
   useEffect(() => {
     // Wait for authChecked to be true before redirecting
     // This prevents redirect loops caused by race conditions
-    if (authChecked && user) {
-      console.log('[LOGIN] Auth checked, user exists - redirecting to tasks');
+    // Only redirect if BOTH user AND token exist (both required for API access)
+    if (authChecked && user && token) {
+      console.log('[LOGIN] Auth checked, user and token exist - redirecting to tasks');
       router.push('/tasks');
     }
-  }, [user, authChecked, router]);
+  }, [user, token, authChecked, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

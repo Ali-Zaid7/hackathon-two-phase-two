@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 
 // Better Auth user type
@@ -42,10 +43,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false); // Prevents redirect loop
   const checkInProgress = useRef(false); // Prevent concurrent checks
+  const justAuthenticated = useRef(false); // Prevent checkSession from overwriting fresh login state
+  const router = useRouter(); // Add router for consistent navigation
 
   // Check for existing session on mount
   const checkSession = useCallback(async () => {
     // Prevent concurrent session checks
+    // Also skip if we just authenticated (login/register) to avoid race condition
+    if (justAuthenticated.current) {
+      justAuthenticated.current = false;
+      setLoading(false);
+      setAuthChecked(true);
+      return;
+    }
     if (checkInProgress.current) {
       return;
     }
@@ -57,9 +67,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (session?.data?.user) {
         setUser(session.data.user);
+        
         // Check for token in localStorage (set during login)
-        const storedToken = localStorage.getItem('jwt_token');
-        setToken(storedToken);
+        let storedToken = localStorage.getItem('jwt_token');
+        
+        // If no stored token but we have a user, try to get a fresh token
+        if (!storedToken) {
+          try {
+            const jwtResponse = await authClient.token();
+            if (jwtResponse?.data?.token) {
+              storedToken = jwtResponse.data.token;
+              setToken(storedToken);
+              localStorage.setItem('jwt_token', storedToken);
+            }
+          } catch (tokenError) {
+            console.warn('[AUTH] Could not refresh JWT token:', tokenError);
+            // Continue without token - let pages handle the missing token
+          }
+        } else {
+          setToken(storedToken);
+        }
       } else {
         setUser(null);
         setToken(null);
@@ -90,26 +117,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (response?.data?.user) {
         const userObj = response.data.user;
-        setUser(userObj);
 
-        // Request JWT token using Better Auth JWT client method
-        try {
-          // @ts-expect-error - JWT client plugin adds getToken method
-          const jwtResponse = await authClient.getToken();
+        // Request JWT token - MANDATORY for API access
+        // Better Auth JWT plugin exposes token() method on client
+        const jwtResponse = await authClient.token();
 
-          if (jwtResponse?.data?.token) {
-            const jwtToken = jwtResponse.data.token;
-            setToken(jwtToken);
-            localStorage.setItem('jwt_token', jwtToken);
-          }
-        } catch (jwtError) {
-          // JWT token fetch failed, but login succeeded
+        if (!jwtResponse?.data?.token) {
+          // JWT token acquisition failed - login cannot proceed
+          console.error('[AUTH] JWT token acquisition failed after successful sign-in');
+          await authClient.signOut(); // Clean up the session
+          return { success: false, error: 'Authentication failed: Could not obtain API token. Please try again.' };
         }
+
+        const jwtToken = jwtResponse.data.token;
+
+        // Set justAuthenticated to prevent checkSession from overwriting our fresh state
+        justAuthenticated.current = true;
+
+        setToken(jwtToken);
+        localStorage.setItem('jwt_token', jwtToken);
+        setUser(userObj);
+        setAuthChecked(true); // Mark auth as checked immediately after login
 
         return { success: true };
       }
       return { success: false, error: 'Invalid credentials' };
     } catch (error) {
+      // Clean up any partial state
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem('jwt_token');
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Login failed'
@@ -130,26 +167,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (response?.data?.user) {
         const userObj = response.data.user;
-        setUser(userObj);
 
-        // Request JWT token using Better Auth JWT client method
-        try {
-          // @ts-expect-error - JWT client plugin adds getToken method
-          const jwtResponse = await authClient.getToken();
+        // Request JWT token - MANDATORY for API access
+        // Better Auth JWT plugin exposes token() method on client
+        const jwtResponse = await authClient.token();
 
-          if (jwtResponse?.data?.token) {
-            const jwtToken = jwtResponse.data.token;
-            setToken(jwtToken);
-            localStorage.setItem('jwt_token', jwtToken);
-          }
-        } catch (jwtError) {
-          // JWT token fetch failed, but registration succeeded
+        if (!jwtResponse?.data?.token) {
+          // JWT token acquisition failed - registration cannot proceed
+          console.error('[AUTH] JWT token acquisition failed after successful registration');
+          await authClient.signOut(); // Clean up the session
+          return { success: false, error: 'Registration failed: Could not obtain API token. Please try again.' };
         }
+
+        const jwtToken = jwtResponse.data.token;
+
+        // Set justAuthenticated to prevent checkSession from overwriting our fresh state
+        justAuthenticated.current = true;
+
+        setToken(jwtToken);
+        localStorage.setItem('jwt_token', jwtToken);
+        setUser(userObj);
+        setAuthChecked(true); // Mark auth as checked immediately after registration
 
         return { success: true };
       }
       return { success: false, error: 'Registration failed' };
     } catch (error) {
+      // Clean up any partial state
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem('jwt_token');
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Registration failed'
@@ -179,9 +226,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!token || !user) return;
 
+    // Validate token structure before parsing
+    const tokenParts = token.split('.');
+    if (tokenParts.length !== 3) {
+      console.warn('[AUTH] Invalid token format - skipping expiry check');
+      return;
+    }
+
     try {
       // Parse token expiration from JWT payload
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const payload = JSON.parse(atob(tokenParts[1]));
+
+      // Validate exp field exists and is valid
+      if (!payload.exp || typeof payload.exp !== 'number') {
+        console.warn('[AUTH] Token missing valid exp field - skipping expiry check');
+        return;
+      }
+
       const expiresAt = payload.exp * 1000; // Convert to milliseconds
       const now = Date.now();
       const timeUntilExpiry = expiresAt - now;
@@ -192,28 +253,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (refreshTime > 0) {
         const timerId = setTimeout(async () => {
           try {
-            // @ts-expect-error - JWT client plugin adds getToken method
-            const jwtResponse = await authClient.getToken();
+            // Better Auth JWT plugin exposes token() method
+            const jwtResponse = await authClient.token();
             if (jwtResponse?.data?.token) {
               const newToken = jwtResponse.data.token;
               setToken(newToken);
               localStorage.setItem('jwt_token', newToken);
+            } else {
+              // Token refresh failed, clear token but let pages handle redirect
+              console.warn('[AUTH] Token refresh returned no token');
+              localStorage.removeItem('jwt_token');
+              setToken(null);
             }
           } catch (error) {
-            // Token refresh failed, redirect to login
+            // Token refresh failed, clear token but let pages handle redirect
+            console.warn('[AUTH] Token refresh failed:', error);
             localStorage.removeItem('jwt_token');
-            window.location.href = '/login';
+            setToken(null);
           }
         }, refreshTime);
 
         return () => clearTimeout(timerId);
+      } else if (timeUntilExpiry < 0) {
+        // Token is already expired, attempt immediate refresh
+        console.warn('[AUTH] Token expired, attempting refresh');
+        (async () => {
+          try {
+            // Better Auth JWT plugin exposes token() method
+            const jwtResponse = await authClient.token();
+            if (jwtResponse?.data?.token) {
+              const newToken = jwtResponse.data.token;
+              setToken(newToken);
+              localStorage.setItem('jwt_token', newToken);
+            } else {
+              // Refresh failed, clear token but let pages handle redirect
+              localStorage.removeItem('jwt_token');
+              setToken(null);
+            }
+          } catch {
+            // Refresh failed, clear token but let pages handle redirect
+            localStorage.removeItem('jwt_token');
+            setToken(null);
+          }
+        })();
       } else {
-        // Token already expired or expiring soon, redirect to login
-        localStorage.removeItem('jwt_token');
-        window.location.href = '/login';
+        // Token expiring soon (within 5 minutes), schedule immediate refresh
+        console.warn('[AUTH] Token expiring soon, refreshing now');
+        (async () => {
+          try {
+            // Better Auth JWT plugin exposes token() method
+            const jwtResponse = await authClient.token();
+            if (jwtResponse?.data?.token) {
+              const newToken = jwtResponse.data.token;
+              setToken(newToken);
+              localStorage.setItem('jwt_token', newToken);
+            } else {
+              // Refresh failed, clear token but let pages handle redirect
+              localStorage.removeItem('jwt_token');
+              setToken(null);
+            }
+          } catch {
+            // Refresh failed, clear token but let pages handle redirect
+            localStorage.removeItem('jwt_token');
+            setToken(null);
+          }
+        })();
       }
     } catch (error) {
-      // Error parsing token, likely invalid format
+      // Error parsing token - log but don't redirect
+      // Let pages handle redirect based on auth state
+      console.warn('[AUTH] Error parsing token:', error);
     }
   }, [token, user]);
 

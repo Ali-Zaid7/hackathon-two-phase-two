@@ -11,7 +11,7 @@ import { useApiStatus } from '@/hooks/useApiStatus';
 import { useToast } from '@/components/ToastProvider';
 
 const TaskListPage = () => {
-  const { user, loading, authChecked } = useAuth();
+  const { user, token, loading, authChecked } = useAuth();
   const router = useRouter();
   const [tasks, setTasks] = useState<TaskResponse[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
@@ -23,17 +23,19 @@ const TaskListPage = () => {
   const { showToast } = useToast();
 
   // Redirect to login if not authenticated (only after auth check completes)
+  // IMPORTANT: Check both user AND token to prevent redirect loop
   useEffect(() => {
     // Wait for authChecked to be true before redirecting
     // This prevents redirect loops caused by race conditions
-    if (authChecked && !user) {
+    if (authChecked && (!user || !token)) {
       router.push('/login');
     }
-  }, [user, authChecked, router]);
+  }, [user, token, authChecked, router]);
 
   // Define fetchTasks before useEffect that calls it
   const fetchTasks = React.useCallback(async () => {
-    if (!user) return;
+    // IMPORTANT: Block API calls until both user AND token are available
+    if (!user || !token) return;
 
     setLoadingTasks(true);
     try {
@@ -50,14 +52,15 @@ const TaskListPage = () => {
     } finally {
       setLoadingTasks(false);
     }
-  }, [user, showToast, router]);
+  }, [user, token, showToast, router]);
 
   // Load tasks when component mounts or user changes
+  // IMPORTANT: Only fetch when both user AND token are available
   useEffect(() => {
-    if (authChecked && user) {
+    if (authChecked && user && token) {
       fetchTasks();
     }
-  }, [user, authChecked, fetchTasks]);
+  }, [user, token, authChecked, fetchTasks]);
 
   const handleCreateTask = async (taskData: TaskCreate) => {
     if (!user?.id) {
@@ -166,7 +169,8 @@ const TaskListPage = () => {
     );
   }
 
-  if (!user) {
+  // Redirect if missing user OR token (both required for API access)
+  if (!user || !token) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

@@ -12,15 +12,17 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { register, user, loading } = useAuth();
+  const { register, user, token, loading, authChecked } = useAuth();
   const router = useRouter();
 
   // Redirect if already logged in
+  // IMPORTANT: Check both user AND token to prevent redirect loop
   useEffect(() => {
-    if (!loading && user) {
+    // Only redirect if BOTH user AND token exist (both required for API access)
+    if (authChecked && user && token) {
       router.push("/tasks");
     }
-  }, [user, loading, router]);
+  }, [user, token, authChecked, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,8 +61,8 @@ export default function RegisterPage() {
     }
   };
 
-  // Show loading while checking auth state
-  if (loading) {
+  // Show loading while checking auth state (use authChecked for stability)
+  if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
