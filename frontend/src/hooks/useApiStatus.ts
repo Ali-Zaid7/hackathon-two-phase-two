@@ -33,13 +33,12 @@ export const useApiStatus = () => {
       }
 
       return result;
-    } catch (error: any) {
-      const errorMsg = errorMessage || (error.message || 'An error occurred');
+    } catch (error) {
+      const errorMsg = errorMessage || (error instanceof Error ? error.message : 'An error occurred');
       setStatus({ loading: false, error: errorMsg, success: false });
 
       showToast(errorMsg, 'error');
 
-      console.error('API Error:', error);
       return null;
     }
   }, [showToast]);

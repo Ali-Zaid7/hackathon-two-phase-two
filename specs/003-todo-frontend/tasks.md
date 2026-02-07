@@ -4,6 +4,7 @@
 **Branch**: 003-todo-frontend
 **Spec**: [specs/003-todo-frontend/spec.md](./spec.md)
 **Plan**: [specs/003-todo-frontend/plan.md](./plan.md)
+**Last Updated**: 2026-02-06 (Aligned with refined spec and Constitution v3.1.1)
 
 ## Task List
 
@@ -28,14 +29,16 @@
 - **Steps**:
   1. Install Better Auth dependencies
   2. Configure auth provider at root layout
-  3. Set up session handling\n  4. Create app/api/auth/[[...better-auth]]/route.ts handler
-- **Files**: `frontend/app/layout.tsx`, `frontend/lib/auth.ts`
+  3. Set up session handling
+  4. Create `app/api/auth/[...all]/route.ts` handler (matches actual implementation)
+- **Files**: `frontend/app/layout.tsx`, `frontend/lib/auth-server.ts`, `frontend/lib/auth-client.ts`, `frontend/app/api/auth/[...all]/route.ts`
 - **Acceptance Criteria**:
   - User can authenticate via Better Auth
   - Session information is accessible throughout the app
   - JWT token is available for API requests
 - **Dependencies**: Task 1.1
 - **Reference**: spec.md (FR-001), plan.md
+- **Note**: Updated route pattern to match actual implementation (`[...all]` instead of `[[...better-auth]]`)
 
 **Task 1.3: Create API Client Library**
 - **Objective**: Implement centralized API client with JWT handling
@@ -60,37 +63,39 @@
   2. Display task properties (title, description, status, priority, dates)
   3. Add buttons for edit, delete, and toggle completion
   4. Style with Tailwind CSS for responsive design
+  5. Implement completed task visual style (strikethrough + faded appearance per FR-014)
 - **Files**: `frontend/components/TaskCard.tsx`
 - **Acceptance Criteria**:
   - Task information is displayed clearly
   - Interactive elements work properly
   - Component is responsive on mobile and desktop
-  - Visual indication of completion status
+  - Visual indication of completion status (strikethrough + faded per FR-014)
 - **Dependencies**: Task 1.3
-- **Reference**: spec.md (Task Card requirements), data-model.md
+- **Reference**: spec.md (FR-014, Task Card requirements), data-model.md
 
 **Task 2.2: Create TaskForm Component**
 - **Objective**: Build form component for creating and updating tasks
 - **Steps**:
   1. Create `components/TaskForm.tsx`
   2. Include fields for title, description, priority
-  3. Implement form validation
+  3. Implement form validation (title required, max lengths)
   4. Add submit and cancel functionality
   5. Style with Tailwind CSS
+  6. Support both create and edit modes (conditionally rendered)
 - **Files**: `frontend/components/TaskForm.tsx`
 - **Acceptance Criteria**:
   - Form validates required fields (title)
   - Form handles both create and update modes
-  - Proper error handling for validation
+  - Proper error handling for validation (inline per FR-012)
   - Responsive design works on all screen sizes
 - **Dependencies**: Task 1.3
-- **Reference**: spec.md (Task Form requirements), data-model.md
+- **Reference**: spec.md (FR-003, FR-013: inline forms), data-model.md
 
 **Task 2.3: Create Header and Navigation Components**
 - **Objective**: Build consistent header and navigation across the app
 - **Steps**:
   1. Create `components/Header.tsx`
-  2. Display user information (username)
+  2. Display user information (username/email)
   3. Add logout functionality
   4. Create navigation links
   5. Style with Tailwind CSS
@@ -105,33 +110,36 @@
 
 ### Phase 3: Task Management Pages
 
-**Task 3.1: Create Task List Page**
-- **Objective**: Implement page to display all tasks for authenticated user
+**Task 3.1: Create Task List Page with Inline Task Creation**
+- **Objective**: Implement page to display all tasks with inline task creation form
 - **Steps**:
-  1. Create `app/(tasks)/page.tsx` as server component
+  1. Create `app/tasks/page.tsx` (not `app/(tasks)/page.tsx`)
   2. Fetch tasks from API using JWT token
   3. Display tasks using TaskCard components
   4. Add loading and error states
-  5. Implement "Add Task" button linking to creation form
-- **Files**: `frontend/app/(tasks)/page.tsx`, `frontend/app/(tasks)/layout.tsx`
+  5. Implement "Add Task" button that shows inline TaskForm (per FR-013)
+  6. Use state management (e.g., `showCreateForm` state) to conditionally render TaskForm
+- **Files**: `frontend/app/tasks/page.tsx`, `frontend/app/tasks/layout.tsx`
 - **Acceptance Criteria**:
   - All user's tasks are displayed
   - Loading states are shown during API calls
-  - Error states are handled gracefully
-  - Links to create new tasks work properly
+  - Error states are handled gracefully (inline per FR-012)
+  - "Add Task" button toggles inline TaskForm visibility
+  - Inline form submission creates task without page navigation
   - Page is responsive on mobile and desktop
 - **Dependencies**: Tasks 1.3, 2.1, 2.2
-- **Reference**: spec.md (User Story 1, FR-004), contracts/task-api-contract.md
+- **Reference**: spec.md (User Story 1, FR-004, FR-013: inline forms), contracts/task-api-contract.md
+- **Note**: Updated to reflect inline form pattern (no separate `/tasks/new` page)
 
 **Task 3.2: Create Task Detail/Edit Page**
 - **Objective**: Implement page for viewing and editing individual tasks
 - **Steps**:
-  1. Create `app/(tasks)/[id]/page.tsx` as server component
+  1. Create `app/tasks/[id]/page.tsx`
   2. Fetch specific task from API using JWT token
   3. Display task details using TaskCard or dedicated view
-  4. Include TaskForm for editing
+  4. Include inline TaskForm for editing
   5. Add loading and error states
-- **Files**: `frontend/app/(tasks)/[id]/page.tsx`
+- **Files**: `frontend/app/tasks/[id]/page.tsx`
 - **Acceptance Criteria**:
   - Specific task is displayed correctly
   - Editing functionality works end-to-end
@@ -141,24 +149,6 @@
 - **Dependencies**: Tasks 1.3, 2.1, 2.2
 - **Reference**: spec.md (User Story 2, FR-005), contracts/task-api-contract.md
 
-**Task 3.3: Implement Task Creation Flow**
-- **Objective**: Enable users to create new tasks using a dedicated page
-- **Steps**:
-  1. Create dedicated page `app/(tasks)/new/page.tsx` for task creation
-  2. Include TaskForm component configured in "create" mode
-  3. Connect TaskForm to API client for POST requests
-  4. Handle success and error cases
-  5. Redirect to task list page after successful creation
-- **Files**: `frontend/app/(tasks)/new/page.tsx`, `frontend/components/TaskForm.tsx`, `frontend/app/(tasks)/page.tsx`
-- **Acceptance Criteria**:
-  - Users navigate to `/tasks/new` to create tasks (dedicated page, not modal)
-  - New tasks appear in the task list after creation
-  - Error handling provides user feedback inline with form
-  - Success redirects user to task list with success message
-  - "Add Task" button on task list links to `/tasks/new`
-- **Dependencies**: Tasks 1.3, 2.2, 3.1
-- **Reference**: spec.md (FR-003, FR-013: "Task creation and update MUST use separate dedicated pages"), contracts/task-api-contract.md
-
 ### Phase 4: Task Operations and Enhancements
 
 **Task 4.1: Implement Task Update Operations**
@@ -167,11 +157,11 @@
   1. Connect TaskForm in edit mode to API client for PUT requests
   2. Handle success and error cases for updates
   3. Update UI after successful update
-- **Files**: `frontend/components/TaskForm.tsx`, `frontend/app/(tasks)/[id]/page.tsx`
+- **Files**: `frontend/components/TaskForm.tsx`, `frontend/app/tasks/[id]/page.tsx`
 - **Acceptance Criteria**:
   - Users can update tasks successfully
   - Updated tasks reflect changes in the UI
-  - Error handling provides user feedback
+  - Error handling provides user feedback (inline per FR-012)
   - Success creates appropriate user feedback
 - **Dependencies**: Tasks 1.3, 2.2, 3.2
 - **Reference**: spec.md (FR-005), contracts/task-api-contract.md
@@ -199,15 +189,15 @@
   1. Add toggle functionality to TaskCard component
   2. Connect to API client for PATCH requests to toggle completion
   3. Handle success and error cases
-  4. Update UI after successful toggle
+  4. Update UI after successful toggle (apply strikethrough + faded styling per FR-014)
 - **Files**: `frontend/components/TaskCard.tsx`
 - **Acceptance Criteria**:
   - Users can toggle task completion status
-  - UI updates immediately to reflect status change
+  - UI updates immediately to reflect status change (strikethrough + faded per FR-014)
   - Error handling provides user feedback
   - Changes persist in the backend
 - **Dependencies**: Tasks 1.3, 2.1
-- **Reference**: spec.md (FR-007), contracts/task-api-contract.md
+- **Reference**: spec.md (FR-007, FR-014), contracts/task-api-contract.md
 
 ### Phase 5: Error Handling and Polish
 
@@ -215,19 +205,20 @@
 - **Objective**: Add comprehensive error handling throughout the application
 - **Steps**:
   1. Create error boundary components
-  2. Implement consistent error display
+  2. Implement consistent error display (inline per FR-012)
   3. Handle API errors gracefully
-  4. Add 401 handling for expired tokens
-  5. Implement offline connectivity handling for task operations
+  4. Add 401 handling for expired tokens (redirect to login per FR-017)
+  5. Add 403 handling for unauthorized access (per FR-018)
 - **Files**: `frontend/app/error.tsx`, `frontend/app/not-found.tsx`, `frontend/components/ErrorBoundary.tsx`
 - **Acceptance Criteria**:
-  - Errors are displayed in a user-friendly way
+  - Errors are displayed in a user-friendly way (inline per FR-012)
   - Application doesn't crash on errors
-  - Expired tokens redirect to login
+  - Expired tokens redirect to login (per FR-017)
+  - 403 errors show "Access denied" message (per FR-018)
   - Error messages provide helpful guidance
-  - Offline operations queue and sync when connectivity restored
 - **Dependencies**: All previous tasks
-- **Reference**: spec.md (FR-008, FR-009), plan.md, spec.md (edge cases: internet connectivity, expired JWT tokens)
+- **Reference**: spec.md (FR-008, FR-009, FR-012, FR-017, FR-018), plan.md
+- **Note**: Removed offline queue/sync requirement (out of scope per Constitution v3.1.1)
 
 **Task 5.2: Implement Loading States and User Feedback**
 - **Objective**: Add loading indicators and user feedback for all operations
@@ -244,11 +235,12 @@
   - Loading states are visually consistent
 - **Dependencies**: All previous tasks
 - **Reference**: spec.md (FR-008), plan.md
+- **Note**: AuthProvider and useApiStatus hook exist; no separate useTasks or useAuth hooks needed
 
 **Task 5.3: Final Responsiveness and Accessibility**
 - **Objective**: Ensure the application works perfectly on all devices and is accessible
 - **Steps**:
-  1. Test responsive design on multiple screen sizes
+  1. Test responsive design on multiple screen sizes (320px to 2560px per SC-005)
   2. Implement accessibility features (ARIA labels, keyboard navigation)
   3. Optimize for performance
   4. Conduct final UI review
@@ -257,9 +249,9 @@
   - Application works on screen sizes from 320px to 2560px (per spec SC-005)
   - Keyboard navigation works properly
   - Screen readers can interpret the interface
-  - Performance is optimized
+  - Mobile-first responsive design implemented (per FR-011)
 - **Dependencies**: All previous tasks
-- **Reference**: spec.md (FR-010, SC-005), plan.md
+- **Reference**: spec.md (FR-010, FR-011, SC-005), plan.md
 
 **Task 5.4: Implement Concurrent Update Handling**
 - **Objective**: Handle edge case where multiple users update the same task simultaneously
@@ -268,7 +260,7 @@
   2. Update local UI state with backend response after every successful update
   3. Ensure UI always reflects the final state returned by API
   4. Add logging for debugging concurrent update scenarios
-- **Files**: `frontend/lib/api.ts`, `frontend/components/TaskForm.tsx`, `frontend/app/(tasks)/[id]/page.tsx`
+- **Files**: `frontend/lib/api.ts`, `frontend/components/TaskForm.tsx`, `frontend/app/tasks/[id]/page.tsx`
 - **Acceptance Criteria**:
   - When two users update the same task, the last update persists (per backend logic)
   - UI reflects the final state from backend response, not optimistic local state
@@ -285,7 +277,7 @@
   3. Prevent modification attempts when 403 is detected
   4. Log unauthorized access attempts to console for debugging
   5. Optionally redirect to task list page if viewing invalid task detail page
-- **Files**: `frontend/lib/api.ts`, `frontend/components/ErrorBoundary.tsx`, `frontend/app/(tasks)/[id]/page.tsx`
+- **Files**: `frontend/lib/api.ts`, `frontend/components/ErrorBoundary.tsx`, `frontend/app/tasks/[id]/page.tsx`
 - **Acceptance Criteria**:
   - 403 responses display appropriate error message to user
   - User cannot modify tasks they don't own
@@ -302,7 +294,7 @@
   3. Call Better Auth refresh endpoint to obtain new token
   4. Update stored token silently without user interruption
   5. Handle refresh failures by redirecting to login
-- **Files**: `frontend/lib/auth.ts`, `frontend/components/AuthProvider.tsx`
+- **Files**: `frontend/lib/auth-client.ts`, `frontend/components/AuthProvider.tsx`
 - **Acceptance Criteria**:
   - Tokens refresh automatically before expiration during active sessions
   - Users don't experience unexpected 401 errors during normal usage
@@ -312,10 +304,30 @@
 - **Reference**: spec.md (FR-017), plan.md (JWT token handling)
 - **Priority**: HIGH - prevents poor user experience from sudden session expiration
 
+**Task 5.7: Document Performance Expectations for SC-004**
+- **Objective**: Document measurement methodology for 3-second load time requirement
+- **Steps**:
+  1. Create performance testing documentation in `specs/003-todo-frontend/performance-testing.md`
+  2. Document how to measure "DOMContentLoaded" to "all tasks rendered" time
+  3. Document test conditions: 50 tasks in database, 10 page loads
+  4. Document Browser DevTools Performance tab usage
+  5. Document success criteria: average load time ≤3 seconds
+  6. Include baseline measurements from current implementation
+- **Files**: `specs/003-todo-frontend/performance-testing.md`
+- **Acceptance Criteria**:
+  - Documentation clearly explains SC-004 measurement methodology
+  - Step-by-step instructions for running performance tests
+  - Success criteria explicitly stated
+  - Test conditions documented (50 tasks, 10 loads)
+  - Baseline measurements included for reference
+- **Dependencies**: Tasks 3.1, 5.3
+- **Reference**: spec.md (SC-004 and SC-004 Measurement Methodology)
+- **Note**: Documentation only - no optimization work required at this stage
+
 ## Implementation Order
 1. Complete Phase 1 (Project setup and authentication)
 2. Complete Phase 2 (Core UI components)
-3. Complete Phase 3 (Task management pages)
+3. Complete Phase 3 (Task management pages with inline forms)
 4. Complete Phase 4 (Task operations)
 5. Complete Phase 5 (Error handling and polish)
 
@@ -324,12 +336,41 @@
 - All API integrations must use the centralized API client
 - All components must be responsive and follow Tailwind CSS patterns
 - Authentication must be handled consistently throughout the application
-- Error handling must be graceful and user-friendly
+- Error handling must be graceful and user-friendly (inline per FR-012)
+- All forms must be inline (per FR-013) - no separate page routes for create/update
 
 ## Success Metrics
-- All CRUD operations work end-to-end (per spec SC-001)
+- All CRUD operations work end-to-end (per spec SC-001: under 30 seconds from action to UI update)
 - 95% of API requests succeed with proper error handling (per spec SC-002)
 - 90% of users successfully complete task creation on first attempt (per spec SC-003)
 - Application loads and displays user's tasks within 3 seconds (per spec SC-004)
 - UI is responsive on screen sizes 320px-2560px (per spec SC-005)
 - All authenticated user actions result in proper backend API calls with JWT tokens (per spec SC-006)
+
+## Changes from Original Tasks (2026-02-06)
+
+### Removed (Out of Scope per Constitution v3.1.1):
+- ❌ Task 3.3: "Create dedicated page `/app/(tasks)/new/page.tsx`" - Replaced with inline form in Task 3.1
+- ❌ Task 5.1 Step 5: "Implement offline connectivity handling" - Removed (offline queue out of scope)
+- ❌ Task 5.1 Acceptance: "Offline operations queue and sync" - Removed
+- ❌ References to `/hooks/useTasks.ts` - Does not exist; useApiStatus used instead
+- ❌ References to `/hooks/useAuth.ts` - Does not exist; AuthProvider context used directly
+
+### Updated:
+- ✅ Task 1.2: Updated Better Auth route to `/api/auth/[...all]/route.ts` (matches implementation)
+- ✅ Task 3.1: Updated to include inline TaskForm rendering (per FR-013)
+- ✅ Task 5.1: Removed offline queue, added specific 401/403 handling per FR-017/FR-018
+- ✅ All references to "separate dedicated pages" replaced with "inline forms"
+
+### Added:
+- ✅ Task 5.7: Document Performance Expectations for SC-004 (measurement only, no optimization)
+
+## Alignment with Refined Specification
+- ✅ Constitution v3.1.1 compliant (offline features excluded)
+- ✅ FR-013 aligned (inline forms, not dedicated pages)
+- ✅ FR-012 aligned (inline error messages)
+- ✅ FR-017 aligned (expired token handling)
+- ✅ FR-018 aligned (unauthorized access handling)
+- ✅ SC-004 measurement documented (Task 5.7)
+- ✅ All references to non-existent hooks removed
+- ✅ Better Auth route pattern matches actual implementation

@@ -37,8 +37,8 @@ export default function LoginPage() {
       } else {
         setError(result.error || 'Invalid email or password');
       }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during login');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred during login');
     } finally {
       setIsSubmitting(false);
     }

@@ -27,47 +27,42 @@ const TaskListPage = () => {
     // Wait for authChecked to be true before redirecting
     // This prevents redirect loops caused by race conditions
     if (authChecked && !user) {
-      console.log('[TASKS] Auth checked, no user - redirecting to login');
       router.push('/login');
     }
   }, [user, authChecked, router]);
+
+  // Define fetchTasks before useEffect that calls it
+  const fetchTasks = React.useCallback(async () => {
+    if (!user) return;
+
+    setLoadingTasks(true);
+    try {
+      const userTasks = await getTasks(user.id);
+      setTasks(userTasks);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load tasks. Please try again.';
+      showToast(errorMessage, 'error');
+
+      // If session expired, redirect to login
+      if (error instanceof Error && error.message.includes('session has expired')) {
+        router.push('/login');
+      }
+    } finally {
+      setLoadingTasks(false);
+    }
+  }, [user, showToast, router]);
 
   // Load tasks when component mounts or user changes
   useEffect(() => {
     if (authChecked && user) {
       fetchTasks();
     }
-  }, [user, authChecked]);
-
-  const fetchTasks = async () => {
-    if (!user) return;
-
-    await executeWithStatus(
-      async () => {
-        setLoadingTasks(true);
-        const userTasks = await getTasks(user.id);
-        setTasks(userTasks);
-        return userTasks;
-      },
-      undefined, // No success message for loading
-      'Failed to load tasks. Please try again.'
-    ).finally(() => {
-      setLoadingTasks(false);
-    });
-  };
+  }, [user, authChecked, fetchTasks]);
 
   const handleCreateTask = async (taskData: TaskCreate) => {
-    if (!user) {
-      console.error('[TASK DEBUG] No user object available');
-      return;
-    }
-
-    console.log('[TASK DEBUG] User object:', user);
-    console.log('[TASK DEBUG] User.id:', user.id);
-    console.log('[TASK DEBUG] Creating task with data:', taskData);
-
-    if (!user.id) {
-      console.error('[TASK DEBUG] ERROR: user.id is undefined!');
+    if (!user?.id) {
+      showToast('User not authenticated. Please log in.', 'error');
+      router.push('/login');
       return;
     }
 
@@ -76,11 +71,14 @@ const TaskListPage = () => {
         const newTask = await createTask(user.id, taskData);
         setTasks([...tasks, newTask]);
         setShowCreateForm(false);
-        console.log('[TASK DEBUG] Task created successfully:', newTask);
         return newTask;
       },
       'Task created successfully!',
-      'Failed to create task. Please try again.'
+      'Failed to create task. Please try again.',
+      () => {
+        // On error callback - check if it's a session expiry
+        router.push('/login');
+      }
     );
   };
 
@@ -130,9 +128,9 @@ const TaskListPage = () => {
 
       const successMessage = updatedTask.is_completed ? 'Task marked as complete!' : 'Task marked as incomplete!';
       showToast(successMessage, 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to update task. Please try again.', 'error');
-      console.error('Toggle error:', error);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update task. Please try again.';
+      showToast(errorMessage, 'error');
     }
   };
 
